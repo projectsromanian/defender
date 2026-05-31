@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Defender 4</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        :root {
+            --bg-color: #060913;
+            --panel-color: #0f1524;
+            --panel-hover: #172036;
+            --accent-color: #00d2ff;
+            --accent-glow: rgba(0, 210, 255, 0.3);
+            --text-color: #ffffff;
+            --text-muted: #647799;
+            --error-color: #ff4a4a;
+            --transition-smooth: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Экран авторизации */
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 40px;
+            text-align: center;
+            background: radial-gradient(circle at center, #0f1c33 0%, var(--bg-color) 70%);
+            animation: fadeIn 0.8s ease;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+            letter-spacing: 4px;
+            font-weight: 800;
+            text-transform: uppercase;
+            background: linear-gradient(180deg, #fff 0%, #7ca1d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            letter-spacing: 1px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 22px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background-color: rgba(15, 21, 36, 0.8);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 1.4rem;
+            text-align: center;
+            letter-spacing: 2px;
+            outline: none;
+            transition: var(--transition-smooth);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 20px var(--accent-glow), inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 22px;
+            border-radius: 16px;
+            border: none;
+            background: linear-gradient(135deg, var(--accent-color) 0%, #0088cc 100%);
+            color: #03050a;
+            font-size: 1.3rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px var(--accent-glow);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #error-msg {
+            color: var(--error-color);
+            margin-top: 20px;
+            font-size: 1.1rem;
+            min-height: 25px;
+            transition: var(--transition-smooth);
+            animation: shake 0.4s ease-in-out forwards;
+            display: none;
+        }
+
+        /* Главный экран */
+        #main-screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            grid-template-columns: 280px 1fr;
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Боковое меню */
+        sidebar {
+            background-color: var(--panel-color);
+            padding: 40px 24px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 5px 0 25px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .brand-info {
+            margin-bottom: 45px;
+            padding-left: 10px;
+        }
+
+        .brand-info h2 {
+            font-size: 1.8rem;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .brand-info p {
+            font-size: 0.9rem;
+            color: var(--accent-color);
+            margin-top: 6px;
+            opacity: 0.8;
+            font-family: monospace;
+        }
+
+        .nav-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            text-align: left;
+            padding: 18px 24px;
+            border-radius: 14px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            width: 100%;
+            transition: var(--transition-smooth);
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+            background-color: rgba(255,255,255,0.02);
+            transform: translateX(4px);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(90deg, rgba(0, 210, 255, 0.15) 0%, rgba(0,0,0,0) 100%);
+            color: var(--accent-color);
+            border-left: 4px solid var(--accent-color);
+            transform: translateX(8px);
+        }
+
+        /* Контентная зона */
+        .content-area {
+            position: relative;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            display: none;
+            height: 100%;
+            width: 100%;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Настройка внутренних отступов для обычных текстовых вкладок */
+        #tab-salon, #tab-music {
+            padding: 50px;
+            overflow-y: auto;
+            background: radial-gradient(circle at top right, #0d1629 0%, var(--bg-color) 80%);
+        }
+
+        /* ВКЛАДКА САЛОН */
+        .salon-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            max-width: 900px;
+        }
+
+        .salon-card {
+            background: rgba(15, 21, 36, 0.6);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.03);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .salon-control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .salon-card h4 {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        /* Выбор режимов поездки */
+        .mode-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #0b101d;
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .mode-btn {
+            background: transparent;
+            color: var(--text-muted);
+            padding: 12px 5px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            box-shadow: none;
+            transition: var(--transition-smooth);
+        }
+        .mode-btn:hover {
+            color: #fff;
+            transform: none;
+            box-shadow: none;
+        }
+        .mode-btn.active {
+            background: var(--accent-color);
+            color: #03050a;
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        /* Тумблеры */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 65px;
+            height: 38px;
+        }
+
+        .switch input { display: none; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #232c3d;
+            transition: var(--transition-smooth);
+            border-radius: 38px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 30px; width: 30px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: var(--transition-smooth);
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { 
+            background-color: var(--accent-color); 
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        input:checked + .slider:before { transform: translateX(27px); }
+
+        /* Прогресс бар топлива */
+        .fuel-container {
+            margin-top: 5px;
+        }
+        .fuel-bar-bg {
+            width: 100%;
+            height: 12px;
+            background: #172036;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+        .fuel-bar-fill {
+            width: 78%;
+            height: 100%;
+            background: linear-gradient(90deg, #0088cc, var(--accent-color));
+            box-shadow: 0 0 10px var(--accent-glow);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        /* Кнопка зажигания */
+        .engine-btn {
+            background: linear-gradient(135deg, #17233c 0%, #0d1526 100%);
+            color: #fff;
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            box-shadow: none;
+            padding: 18px;
+            font-size: 1.1rem;
+        }
+        .engine-btn.starting {
+            animation: pulseGlow 1s infinite alternate;
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+        .engine-btn.active {
+            background: linear-gradient(135deg, rgba(0, 210, 255, 0.2) 0%, rgba(0, 136, 204, 0.2) 100%);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .start-progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 2px;
+            display: none;
+            overflow: hidden;
+        }
+        .start-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--accent-color);
+        }
+
+        /* Окна */
+        .window-btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .window-btn {
+            padding: 15px;
+            font-size: 1rem;
+            background: #172036;
+            color: #fff;
+            border: 1px solid transparent;
+            box-shadow: none;
+        }
+        .window-btn.active-op {
+            border-color: var(--accent-color);
+            background: rgba(0, 210, 255, 0.05);
+            color: var(--accent-color);
+        }
+        
+        .window-visual {
+            width: 50px;
+            height: 45px;
+            border: 2px solid #232c3d;
+            border-radius: 8px 8px 2px 2px;
+            position: relative;
+            overflow: hidden;
+            background: rgba(0,0,0,0.2);
+        }
+        .window-glass {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(0deg, rgba(0, 210, 255, 0.4) 0%, rgba(0, 210, 255, 0.1) 100%);
+            border-top: 2px solid var(--accent-color);
+            transition: height 2s linear;
+        }
+        .window-glass.open {
+            height: 15%;
+        }
+
+        /* НАВИГАТОР НА ВЕСЬ ЭКРАН */
+        #tab-navigator {
+            position: relative;
+        }
+
+        .map-wrapper-full {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #0b0d13;
+        }
+
+        /* Оверлей управления навигатором */
+        .nav-control-panel {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            right: 25px;
+            background: rgba(15, 21, 36, 0.85);
+            backdrop-filter: blur(15px);
+            padding: 20px;
+            border-radius: 18px;
+            z-index: 1000;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .nav-inputs-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 12px;
+        }
+
+        .nav-inputs-row input {
+            padding: 14px 18px;
+            background: rgba(6, 9, 19, 0.7);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: white;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: var(--transition-smooth);
+        }
+
+        .nav-inputs-row input:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
+        }
+
+        .nav-inputs-row button {
+            padding: 0 25px;
+            font-size: 1rem;
+            border-radius: 12px;
+            height: 100%;
+        }
+
+        .nav-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 12px;
+        }
+
+        .nav-status {
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: #d1d9e6;
+        }
+
+        .speedometer {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Вкладка Музыка */
+        .music-layout {
+            display: grid;
+            grid-template-rows: 1fr auto;
+            gap: 25px;
+            height: 100%;
+        }
+
+        .browser-mock {
+            background: rgba(15, 21, 36, 0.6);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .browser-header {
+            background: #0b0d13;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .song-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 25px;
+            background: rgba(255, 255, 255, 0.02);
+            margin-bottom: 12px;
+            border-radius: 14px;
+            transition: var(--transition-smooth);
+            border: 1px solid transparent;
+        }
+
+        .song-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(0, 210, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .download-btn {
+            background: transparent;
+            color: var(--accent-color);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            width: auto;
+            font-size: 1rem;
+        }
+
+        .download-btn:hover {
+            background: var(--accent-color);
+            color: #000;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .audio-player-controls {
+            background: var(--panel-color);
+            padding: 25px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .volume-control input {
+            flex: 1;
+            accent-color: var(--accent-color);
+            height: 6px;
+            cursor: pointer;
+        }
+
+        /* Виджет музыки в углу экрана */
+        #music-mini-widget {
+            display: block;
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(15, 21, 36, 0.85);
+            border: 1px solid var(--accent-color);
+            padding: 18px;
+            border-radius: 16px;
+            width: 280px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 15px var(--accent-glow);
+            z-index: 2000;
+            backdrop-filter: blur(20px);
+            transform: translateX(350px);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #music-mini-widget.visible {
+            transform: translateX(0);
+        }
+
+        .mini-widget-title {
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+
+        .mini-widget-song {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 1.05rem;
+        }
+
+        /* Маркер-стрелочка CSS */
+        .car-arrow-icon {
+            transition: transform 0.1s linear;
+        }
+
+        /* АНИМАЦИИ */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        @keyframes pulseGlow { from { box-shadow: 0 0 5px rgba(0, 210, 255, 0.2); } to { box-shadow: 0 0 20px rgba(0, 210, 255, 0.6); } }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h1>Defender 4</h1>
+        <div class="subtitle">Введите серийный код вашего автомобиля серии Defender</div>
+        <div class="input-group">
+            <input type="text" id="serial-input" placeholder="X●●●●●●●" autocomplete="off">
+            <button onclick="checkCode()">Войти в систему</button>
+        </div>
+        <div id="error-msg"></div>
+    </div>
+
+    <div id="main-screen">
+        <sidebar>
+            <div class="brand-info">
+                <h2>Defender 4</h2>
+                <p id="car-serial-display">SN: X3972314</p>
+            </div>
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="switchTab('salon', this)">Салон</button>
+                <button class="tab-btn" onclick="initMapTab('navigator', this)">Навигатор</button>
+                <button class="tab-btn" onclick="switchTab('music', this)">Музыка</button>
+            </div>
+        </sidebar>
+
+        <div class="content-area">
+            
+            <div id="tab-salon" class="tab-content active">
+                <h3 style="margin-bottom: 30px; font-size: 1.8rem; font-weight: 600;">Управление салоном</h3>
+                
+                <div class="salon-grid">
+                    <div class="salon-card">
+                        <div>
+                            <h4>Система зажигания</h4>
+                            <div style="font-size: 0.9rem; color: var(--text-muted);" id="engine-status">Статус: Выключен</div>
+                        </div>
+                        
+                        <button class="engine-btn" id="btn-engine" onclick="toggleEngine()">Завести машину</button>
+                        
+                        <div class="start-progress-container" id="engine-loader">
+                            <div class="start-progress-bar" id="engine-loader-fill"></div>
+                        </div>
+
+                        <div class="fuel-container">
+                            <div class="salon-control-row" style="margin-bottom: 8px;">
+                                <h4 style="margin: 0;">Уровень топлива</h4>
+                                <span style="font-family: monospace; color: var(--accent-color); font-weight: bold;" id="fuel-value">78.0%</span>
+                            </div>
+                            <div class="fuel-bar-bg" style="margin-bottom: 15px;">
+                                <div class="fuel-bar-fill" id="fuel-bar" style="width: 78.0%;"></div>
+                            </div>
+                            <div class="salon-control-row" style="background: rgba(255,255,255,0.02); padding: 10px 15px; border-radius: 10px;">
+                                <span style="font-size: 0.95rem;">Заливание бензина</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="fuel-refill-toggle" onchange="toggleFuelRefill(this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="salon-card">
+                        <div>
+                            <h4>Режим поездки</h4>
+                        </div>
+                        <div class="mode-selector">
+                            <button class="mode-btn active" id="mode-x1" onclick="setDriveMode(1)">Обычный</button>
+                            <button class="mode-btn" id="mode-x2" onclick="setDriveMode(2)">Ускоренный</button>
+                            <button class="mode-btn" id="mode-x5" onclick="setDriveMode(5)">Спорт</button>
+                        </div>
+
+                        <div class="salon-control-row" style="background: rgba(255,255,255,0.02); padding: 12px 20px; border-radius: 12px; margin-top: 5px;">
+                            <span>Кондиционер</span>
+                            <label class="switch">
+                                <input type="checkbox" id="conditioner-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <h4 style="margin-bottom: 10px;">Стеклоподъемники</h4>
+                            <div class="salon-control-row" style="gap: 20px;">
+                                <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                                    <div class="window-visual"><div class="window-glass" id="glass-1"></div></div>
+                                    <button class="window-btn" id="btn-win-1" onclick="toggleWindow(1)">Окно 1</button>
+                                </div>
+                                <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                                    <div class="window-visual"><div class="window-glass" id="glass-2"></div></div>
+                                    <button class="window-btn" id="btn-win-2" onclick="toggleWindow(2)">Окно 2</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-navigator" class="tab-content">
+                <div class="map-wrapper-full">
+                    <div class="nav-control-panel">
+                        <div class="nav-inputs-row">
+                            <input type="text" id="nav-from" placeholder="Откуда... (кликните карту)">
+                            <input type="text" id="nav-to" placeholder="Куда... (второй клик)">
+                            <button onclick="startNavigation()">Построить маршрут</button>
+                        </div>
+                        <div class="nav-info-row">
+                            <div class="nav-status" id="nav-text">Выберите начальную и конечную точки кликами на карте.</div>
+                            <div class="speedometer" id="speed-display" style="display: none;">0 км/ч</div>
+                        </div>
+                    </div>
+                    <div id="map"></div>
+                </div>
+            </div>
+
+            <div id="tab-music" class="tab-content">
+                <div class="music-layout">
+                    <div class="browser-mock">
+                        <div class="browser-header">https://defender-music-market.ru/tracks</div>
+                        <div style="max-height: 230px; overflow-y: auto; padding-right: 5px;">
+                            <div class="song-item">
+                                <div>
+                                    <strong>No Roots</strong><br>
+                                    <small style="color: var(--text-muted)">Alice Merton</small>
+                                </div>
+                                <button class="download-btn" onclick="downloadSong('Alice Merton — No Roots')">Скачать</button>
+                            </div>
+                            <div class="song-item">
+                                <div>
+                                    <strong>Nightcall</strong><br>
+                                    <small style="color: var(--text-muted)">Kavinsky</small>
+                                </div>
+                                <button class="download-btn" onclick="downloadSong('Kavinsky — Nightcall')">Скачать</button>
+                            </div>
+                            <div class="song-item">
+                                <div>
+                                    <strong>Blinding Lights</strong><br>
+                                    <small style="color: var(--text-muted)">The Weeknd</small>
+                                </div>
+                                <button class="download-btn" onclick="downloadSong('The Weeknd — Blinding Lights')">Скачать</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="audio-player-controls">
+                        <div style="font-weight: 600; font-size: 1.2rem;" id="current-track-name">Трек не выбран</div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="play-pause-btn" style="padding: 12px 25px; font-size: 1rem; width: auto;" onclick="togglePlay()" disabled>Воспроизвести</button>
+                        </div>
+                        <div class="volume-control">
+                            <span style="color: var(--text-muted)">Громкость:</span>
+                            <input type="range" id="volume-slider" min="0" max="100" value="50" oninput="updateVolume(this.value)">
+                            <span id="volume-value" style="font-family: monospace; width: 40px;">50%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="music-mini-widget">
+                <div class="mini-widget-title">Сейчас играет</div>
+                <div class="mini-widget-song" id="mini-widget-name">Название трека</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        const CORRECT_CODE = "X3972314";
+        
+        let audioState = { isPlaying: false, currentTrack: "", volume: 50 };
+        let engineState = { isStarted: false, isLaunching: false };
+        let windowsState = { 1: false, 2: false };
+        let driveModeMultiplier = 1; 
+        let fuelAmount = 78.0;
+        let isRefilling = false;
+
+        // Переменные навигации
+        let map; let mapInitialized = false; let startMarker = null; let endMarker = null; let routeLine = null; let clickCount = 0;
+        let carArrowMarker = null;
+        let routeCoordinates = [];
+        let currentRouteIndex = 0;
+        let navInterval;
+        let mainSystemInterval;
+
+        function checkCode() {
+            const input = document.getElementById('serial-input').value.trim();
+            const errorMsg = document.getElementById('error-msg');
+
+            if (input === CORRECT_CODE) {
+                errorMsg.style.display = 'none';
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-screen').style.display = 'grid';
+                document.getElementById('car-serial-display').innerText = `SN: ${CORRECT_CODE}`;
+                startSystemLoop();
+            } else {
+                errorMsg.style.display = 'block';
+                errorMsg.innerText = "Мы не нашли такой серийный код в базе данных наших автомобилей.";
+                errorMsg.style.animation = 'none';
+                errorMsg.offsetHeight; 
+                errorMsg.style.animation = 'shake 0.4s ease-in-out forwards';
+            }
+        }
+
+        function switchTab(tabName, btnElement) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        function setDriveMode(multiplier) {
+            driveModeMultiplier = multiplier;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            
+            if(multiplier === 1) document.getElementById('mode-x1').classList.add('active');
+            if(multiplier === 2) document.getElementById('mode-x2').classList.add('active');
+            if(multiplier === 5) document.getElementById('mode-x5').classList.add('active');
+        }
+
+        function startSystemLoop() {
+            if (mainSystemInterval) clearInterval(mainSystemInterval);
+            
+            mainSystemInterval = setInterval(() => {
+                if (isRefilling) {
+                    if (fuelAmount < 100) {
+                        fuelAmount = Math.min(100, fuelAmount + 2.5);
+                        updateFuelUI();
+                    }
+                }
+                
+                if (engineState.isStarted && !isRefilling) {
+                    let speedFactor = (navInterval) ? driveModeMultiplier * 0.15 : 0.02;
+                    fuelAmount = Math.max(0, fuelAmount - (0.05 + speedFactor));
+                    updateFuelUI();
+                    
+                    if (fuelAmount <= 0) {
+                        shutdownEngine("Статус: Нет топлива! Машина заглохла.");
+                    }
+                }
+            }, 300);
+        }
+
+        function updateFuelUI() {
+            document.getElementById('fuel-value').innerText = fuelAmount.toFixed(1) + '%';
+            document.getElementById('fuel-bar').style.width = fuelAmount.toFixed(1) + '%';
+        }
+
+        function toggleFuelRefill(checked) {
+            isRefilling = checked;
+            if (isRefilling && engineState.isStarted) {
+                shutdownEngine("Статус: Выключен (Заправка...)");
+            }
+        }
+
+        function toggleEngine() {
+            if (engineState.isLaunching) return;
+
+            const btn = document.getElementById('btn-engine');
+            const statusText = document.getElementById('engine-status');
+            const loaderContainer = document.getElementById('engine-loader');
+            const loaderFill = document.getElementById('engine-loader-fill');
+
+            if (!engineState.isStarted) {
+                if (fuelAmount <= 0) {
+                    alert("Невозможно завести автомобиль: бак пуст!");
+                    return;
+                }
+                if (isRefilling) {
+                    alert("Невозможно завести автомобиль во время заливания бензина!");
+                    return;
+                }
+
+                engineState.isLaunching = true;
+                btn.classList.add('starting');
+                btn.innerText = "Идет запуск...";
+                statusText.innerText = "Статус: Запуск стартера...";
+                loaderContainer.style.display = 'block';
+                
+                let progress = 0;
+                let launchInterval = setInterval(() => {
+                    progress += 4;
+                    loaderFill.style.width = progress + '%';
+                    if (progress >= 100) {
+                        clearInterval(launchInterval);
+                        
+                        engineState.isStarted = true;
+                        engineState.isLaunching = false;
+                        btn.classList.remove('starting');
+                        btn.classList.add('active');
+                        btn.innerText = "Заглушить двигатель";
+                        statusText.innerText = "Статус: Двигатель работает";
+                        loaderContainer.style.display = 'none';
+                        loaderFill.style.width = '0%';
+                    }
+                }, 100);
+            } else {
+                shutdownEngine("Статус: Выключен");
+            }
+        }
+
+        function shutdownEngine(customStatusText) {
+            engineState.isStarted = false;
+            const btn = document.getElementById('btn-engine');
+            btn.classList.remove('active', 'starting');
+            btn.innerText = "Завести машину";
+            document.getElementById('engine-status').innerText = customStatusText || "Статус: Выключен";
+            document.getElementById('conditioner-toggle').checked = false;
+            
+            stopCarMovement();
+        }
+
+        function stopCarMovement() {
+            if (navInterval) {
+                clearInterval(navInterval);
+                navInterval = null;
+            }
+            document.getElementById('speed-display').innerText = "0 км/ч";
+            document.getElementById('speed-display').style.display = 'none';
+            document.getElementById('nav-text').innerText = "Движение прекращено.";
+        }
+
+        function toggleWindow(windowId) {
+            const glass = document.getElementById(`glass-${windowId}`);
+            const btn = document.getElementById(`btn-win-${windowId}`);
+
+            if (!windowsState[windowId]) {
+                windowsState[windowId] = true;
+                glass.classList.add('open');
+                btn.classList.add('active-op');
+                btn.innerText = `Закрыть окно ${windowId}`;
+            } else {
+                windowsState[windowId] = false;
+                glass.classList.remove('open');
+                btn.classList.remove('active-op');
+                btn.innerText = `Открыть окно ${windowId}`;
+            }
+        }
+
+        /* НАВИГАЦИЯ */
+        function initMapTab(tabName, btnElement) {
+            switchTab(tabName, btnElement);
+            if (!mapInitialized) {
+                map = L.map('map', { zoomControl: false }).setView([55.7558, 37.6173], 15);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 20,
+                    attribution: '© OpenStreetMap, © CARTO'
+                }).addTo(map);
+
+                map.on('click', function(e) {
+                    if (clickCount === 0) {
+                        if (startMarker) map.removeLayer(startMarker);
+                        if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
+                        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+                        if (carArrowMarker) { map.removeLayer(carArrowMarker); carArrowMarker = null; }
+                        
+                        startMarker = L.marker(e.latlng).addTo(map);
+                        document.getElementById('nav-from').value = `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
+                        document.getElementById('nav-text').innerText = "Точка отправления выбрана. Кликните для выбора назначения.";
+                        clickCount = 1;
+                    } else if (clickCount === 1) {
+                        if (endMarker) map.removeLayer(endMarker);
+                        endMarker = L.marker(e.latlng).addTo(map);
+                        document.getElementById('nav-to').value = `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
+                        document.getElementById('nav-text').innerText = "Точки выбраны. Нажмите 'Построить маршрут'.";
+                        clickCount = 0;
+                    }
+                });
+                mapInitialized = true;
+            }
+            setTimeout(() => { map.invalidateSize(); }, 200);
+        }
+
+        // Функция подсчета расстояния между точками на карте (в метрах)
+        function getDistanceMeters(p1, p2) {
+            return map.distance(p1, p2);
+        }
+
+        function startNavigation() {
+            const from = document.getElementById('nav-from').value.trim();
+            const to = document.getElementById('nav-to').value.trim();
+            const navText = document.getElementById('nav-text');
+
+            if (!engineState.isStarted) {
+                alert("Невозможно ехать: сначала заведите машину во вкладке Салон!");
+                return;
+            }
+            if (!from || !to) {
+                alert("Пожалуйста, выберите точки на карте кликами!");
+                return;
+            }
+
+            if (!startMarker || !endMarker) return;
+
+            const startLatLng = startMarker.getLatLng();
+            const endLatLng = endMarker.getLatLng();
+
+            navText.innerText = "Вычисление оптимального пути по дорогам...";
+
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startLatLng.lng},${startLatLng.lat};${endLatLng.lng},${endLatLng.lat}?overview=full&geometries=geojson`;
+
+            fetch(osrmUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.routes || data.routes.length === 0) {
+                        navText.innerText = "Ошибка: не удалось проложить путь по дорогам.";
+                        return;
+                    }
+
+                    if (routeLine) map.removeLayer(routeLine);
+                    if (carArrowMarker) map.removeLayer(carArrowMarker);
+
+                    const coords = data.routes[0].geometry.coordinates;
+                    routeCoordinates = coords.map(pair => [pair[1], pair[0]]);
+
+                    routeLine = L.polyline(routeCoordinates, { color: '#00d2ff', weight: 6, opacity: 0.85 }).addTo(map);
+                    
+                    // Фокусируем карту на старте маршрута перед началом поездки
+                    map.setView(routeCoordinates[0], 16);
+
+                    const arrowSVG = `
+                        <svg width="30" height="30" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <polygon points="50,5 95,95 50,70 5,95" fill="#00d2ff" stroke="#ffffff" stroke-width="4"/>
+                        </svg>
+                    `;
+                    const carIcon = L.divIcon({
+                        html: `<div class="car-arrow-icon" id="arrow-svg-wrapper" style="transform: rotate(0deg); width:30px; height:30px;">${arrowSVG}</div>`,
+                        className: '',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+
+                    currentRouteIndex = 0;
+                    carArrowMarker = L.marker(routeCoordinates[0], { icon: carIcon }).addTo(map);
+
+                    runCarMovement();
+                })
+                .catch(err => {
+                    console.error(err);
+                    navText.innerText = "Ошибка сети при связи с дорожным сервером.";
+                });
+        }
+
+        function calculateBearing(lat1, lng1, lat2, lng2) {
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const lat1Rad = lat1 * Math.PI / 180;
+            const lat2Rad = lat2 * Math.PI / 180;
+            const y = Math.sin(dLng) * Math.cos(lat2Rad);
+            const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+            let brng = Math.atan2(y, x) * 180 / Math.PI;
+            return (brng + 360) % 360;
+        }
+
+        function runCarMovement() {
+            clearInterval(navInterval);
+            
+            const navText = document.getElementById('nav-text');
+            const speedDisplay = document.getElementById('speed-display');
+            
+            navText.innerText = `Навигация запущена...`;
+            speedDisplay.style.display = 'block';
+            
+            let currentSpeed = 0;
+
+            navInterval = setInterval(() => {
+                if (!engineState.isStarted) {
+                    stopCarMovement();
+                    return;
+                }
+
+                if (currentRouteIndex >= routeCoordinates.length - 1) {
+                    clearInterval(navInterval);
+                    navInterval = null;
+                    speedDisplay.innerText = "0 км/ч";
+                    speedDisplay.style.display = 'none';
+                    navText.innerText = "Вы успешно прибыли в пункт назначения!";
+                    return;
+                }
+
+                const currentPoint = routeCoordinates[currentRouteIndex];
+                const nextPoint = routeCoordinates[currentRouteIndex + 1];
+
+                // Адаптивная скорость: измеряем длину отрезка дороги в метрах
+                const segmentLength = getDistanceMeters(currentPoint, nextPoint);
+                let targetMaxSpeed = 60;
+
+                if (segmentLength < 18) {
+                    // Короткие отрезки (дворы, крутые завороты, переулки) -> едем медленно
+                    targetMaxSpeed = 16;
+                    navText.innerText = "Движение по дворовой территории / переулку";
+                } else {
+                    // Длинные сегменты (улицы, проспекты, шоссе) -> разгоняемся быстрее
+                    targetMaxSpeed = 55 * driveModeMultiplier;
+                    navText.innerText = "Движение по городской магистрали";
+                }
+
+                // Плавное изменение текущей скорости на спидометре
+                if (currentSpeed < targetMaxSpeed) {
+                    currentSpeed += 4;
+                    if (currentSpeed > targetMaxSpeed) currentSpeed = targetMaxSpeed;
+                } else if (currentSpeed > targetMaxSpeed) {
+                    currentSpeed -= 6;
+                    if (currentSpeed < targetMaxSpeed) currentSpeed = targetMaxSpeed;
+                }
+                
+                // Добавляем легкую симуляцию колебания скорости
+                let displaySpeed = currentSpeed + (currentSpeed > 0 ? Math.floor(Math.random() * 3) - 1 : 0);
+                speedDisplay.innerText = `${Math.max(0, displaySpeed)} км/ч`;
+
+                // Рассчитываем шаг продвижения по массиву точек в зависимости от типа зоны
+                let stepsToAdvance = (targetMaxSpeed <= 16) ? 1 : Math.max(1, Math.floor(driveModeMultiplier));
+                currentRouteIndex = Math.min(routeCoordinates.length - 1, currentRouteIndex + stepsToAdvance);
+
+                const activePoint = routeCoordinates[currentRouteIndex];
+                
+                // Обновляем позицию стрелочки
+                carArrowMarker.setLatLng(activePoint);
+
+                // АВТОМАТИЧЕСКИЙ СЛЕДЯЩИЙ ЭКРАН (камера плавно центрируется по стрелочке)
+                map.panTo(activePoint, { animate: true, duration: 0.1 });
+
+                // Поворот стрелочки по курсу движения
+                if (currentRouteIndex < routeCoordinates.length - 1) {
+                    const futurePoint = routeCoordinates[currentRouteIndex + 1];
+                    const bearing = calculateBearing(activePoint[0], activePoint[1], futurePoint[0], futurePoint[1]);
+                    
+                    const arrowEl = document.getElementById('arrow-svg-wrapper');
+                    if (arrowEl) {
+                        arrowEl.style.transform = `rotate(${bearing}deg)`;
+                    }
+                }
+            }, 160);
+        }
+
+        /* МУЗЫКА */
+        function downloadSong(trackName) {
+            audioState.currentTrack = trackName;
+            document.getElementById('current-track-name').innerText = trackName;
+            document.getElementById('play-pause-btn').disabled = false;
+            startMusic();
+        }
+
+        function startMusic() {
+            audioState.isPlaying = true;
+            document.getElementById('play-pause-btn').innerText = "Пауза";
+            document.getElementById('mini-widget-name').innerText = audioState.currentTrack;
+            document.getElementById('music-mini-widget').classList.add('visible');
+        }
+
+        function togglePlay() {
+            if (audioState.isPlaying) {
+                audioState.isPlaying = false;
+                document.getElementById('play-pause-btn').innerText = "Воспроизвести";
+                document.getElementById('music-mini-widget').classList.remove('visible');
+            } else {
+                startMusic();
+            }
+        }
+
+        function updateVolume(value) {
+            audioState.volume = value;
+            document.getElementById('volume-value').innerText = `${value}%`;
+        }
+    </script>
+</body>
+</html>
