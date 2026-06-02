@@ -8,9 +8,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        /* ... (все стили остаются такими же, как были) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #0a0a0a; color: #fff; overflow: hidden; height: 100vh; width: 100vw; }
+
+        /* Login Screen */
         .login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; transition: opacity 0.5s ease; }
         .login-screen.hidden { opacity: 0; pointer-events: none; }
         .login-title { font-size: 48px; margin-bottom: 40px; color: #4fc3f7; text-shadow: 0 0 20px rgba(79, 195, 247, 0.5); animation: glow 2s ease-in-out infinite alternate; }
@@ -21,96 +22,154 @@
         .login-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 195, 247, 0.6); }
         .error-message { margin-top: 20px; color: #ff5252; font-size: 18px; opacity: 0; transition: opacity 0.3s ease; min-height: 27px; }
         .error-message.show { opacity: 1; }
+
+        /* Main Layout */
         .main-container { display: none; height: 100vh; width: 100vw; flex-direction: column; }
         .main-container.active { display: flex; }
-        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4fc3f7; box-shadow: 0 4px 20px rgba(79, 195, 247, 0.3); }
-        .header-title { font-size: 36px; color: #4fc3f7; text-shadow: 0 0 15px rgba(79, 195, 247, 0.5); }
-        .serial-number { font-size: 18px; color: rgba(255, 255, 255, 0.7); }
-        .tabs { display: flex; background: #0f0f1e; border-bottom: 1px solid rgba(79, 195, 247, 0.3); }
-        .tab { flex: 1; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s ease; border-bottom: 3px solid transparent; font-size: 20px; color: rgba(255, 255, 255, 0.6); }
+        
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4fc3f7; box-shadow: 0 4px 20px rgba(79, 195, 247, 0.3); z-index: 10; }
+        .header-title { font-size: 28px; color: #4fc3f7; text-shadow: 0 0 15px rgba(79, 195, 247, 0.5); }
+        .serial-number { font-size: 16px; color: rgba(255, 255, 255, 0.7); }
+
+        .tabs { display: flex; background: #0f0f1e; border-bottom: 1px solid rgba(79, 195, 247, 0.3); z-index: 10; }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; transition: all 0.3s ease; border-bottom: 3px solid transparent; font-size: 18px; color: rgba(255, 255, 255, 0.6); }
         .tab:hover { background: rgba(79, 195, 247, 0.1); color: #4fc3f7; }
         .tab.active { background: rgba(79, 195, 247, 0.15); border-bottom-color: #4fc3f7; color: #4fc3f7; }
-        .content { flex: 1; overflow-y: auto; padding: 30px; background: #0a0a0a; }
-        .tab-content { display: none; animation: fadeIn 0.4s ease; }
+
+        .content { flex: 1; overflow-y: auto; padding: 20px; background: #0a0a0a; position: relative; }
+        .tab-content { display: none; animation: fadeIn 0.4s ease; height: 100%; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .salon-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; max-width: 1200px; margin: 0 auto; }
-        .control-card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 20px; padding: 30px; border: 2px solid rgba(79, 195, 247, 0.3); transition: all 0.3s ease; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }
-        .control-card:hover { border-color: #4fc3f7; box-shadow: 0 8px 32px rgba(79, 195, 247, 0.3); transform: translateY(-5px); }
-        .control-title { font-size: 24px; margin-bottom: 20px; color: #4fc3f7; }
-        .toggle-container { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; }
-        .toggle-label { font-size: 20px; color: rgba(255, 255, 255, 0.8); }
-        .toggle-switch { position: relative; width: 80px; height: 40px; background: rgba(255, 255, 255, 0.1); border-radius: 20px; cursor: pointer; transition: all 0.3s ease; }
-        .toggle-switch.active { background: #4fc3f7; }
-        .toggle-slider { position: absolute; top: 4px; left: 4px; width: 32px; height: 32px; background: #fff; border-radius: 50%; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
-        .toggle-switch.active .toggle-slider { left: 44px; }
-        .fuel-container { margin-top: 20px; }
-        .fuel-bar-bg { width: 100%; height: 30px; background: rgba(255, 255, 255, 0.1); border-radius: 15px; overflow: hidden; position: relative; }
-        .fuel-bar-fill { height: 100%; background: linear-gradient(90deg, #ff5252 0%, #ffa726 50%, #66bb6a 100%); border-radius: 15px; transition: width 0.5s ease; position: relative; overflow: hidden; }
-        .fuel-bar-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%); animation: shimmer 2s infinite; }
-        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-        .fuel-text { text-align: center; margin-top: 10px; font-size: 18px; color: rgba(255, 255, 255, 0.8); }
-        .btn { padding: 15px 30px; font-size: 18px; border: none; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; margin: 10px 5px; font-weight: 600; }
-        .btn-primary { background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%); color: #fff; box-shadow: 0 4px 15px rgba(79, 195, 247, 0.4); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 195, 247, 0.6); }
-        .btn-secondary { background: rgba(79, 195, 247, 0.2); color: #4fc3f7; border: 2px solid #4fc3f7; }
-        .btn-secondary:hover { background: rgba(79, 195, 247, 0.3); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .window-animation { position: relative; height: 150px; background: rgba(0, 0, 0, 0.5); border-radius: 10px; overflow: hidden; margin-top: 15px; }
-        .window-glass { position: absolute; top: 0; left: 0; right: 0; height: 100%; background: linear-gradient(180deg, rgba(79, 195, 247, 0.3) 0%, rgba(79, 195, 247, 0.1) 100%); transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: top; }
-        .window-glass.open { transform: scaleY(0); }
-        .window-frame { position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 3px solid #4fc3f7; border-radius: 10px; pointer-events: none; }
-        .engine-status { text-align: center; margin-top: 20px; font-size: 20px; color: rgba(255, 255, 255, 0.8); }
-        .engine-starting { animation: pulse 1s ease-in-out infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        #map { width: 100%; height: calc(100vh - 280px); border-radius: 15px; border: 2px solid #4fc3f7; }
-        .nav-controls { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; }
-        .speed-selector { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-        .speed-selector label { font-size: 20px; color: rgba(255, 255, 255, 0.8); }
-        .speed-input { padding: 12px 20px; font-size: 18px; background: rgba(79, 195, 247, 0.1); border: 2px solid #4fc3f7; border-radius: 10px; color: #fff; width: 150px; outline: none; }
-        .route-info { background: rgba(79, 195, 247, 0.1); padding: 20px; border-radius: 15px; margin-top: 20px; border: 1px solid rgba(79, 195, 247, 0.3); }
-        .route-info h3 { color: #4fc3f7; margin-bottom: 10px; }
-        .mode-selector { display: flex; gap: 20px; margin-top: 20px; }
-        .mode-btn { flex: 1; padding: 20px; background: rgba(79, 195, 247, 0.1); border: 2px solid rgba(79, 195, 247, 0.3); border-radius: 15px; cursor: pointer; transition: all 0.3s ease; text-align: center; }
-        .mode-btn:hover { background: rgba(79, 195, 247, 0.2); border-color: #4fc3f7; }
-        .mode-btn.active { background: rgba(79, 195, 247, 0.3); border-color: #4fc3f7; box-shadow: 0 0 20px rgba(79, 195, 247, 0.4); }
-        .mode-btn h3 { color: #4fc3f7; margin-bottom: 10px; font-size: 22px; }
-        .mode-btn p { color: rgba(255, 255, 255, 0.7); font-size: 16px; }
-        .refuel-animation { position: relative; height: 100px; margin-top: 20px; }
-        .fuel-pump { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 60px; animation: pump 1s ease-in-out infinite; }
-        @keyframes pump { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
-        .refueling-text { text-align: center; margin-top: 15px; font-size: 18px; color: #66bb6a; }
-        .taxi-container { max-width: 800px; margin: 0 auto; }
-        .taxi-balance { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 20px; padding: 40px; text-align: center; border: 2px solid #4fc3f7; margin-bottom: 30px; }
-        .balance-amount { font-size: 64px; color: #4fc3f7; font-weight: bold; text-shadow: 0 0 20px rgba(79, 195, 247, 0.5); margin: 20px 0; }
-        .balance-label { font-size: 24px; color: rgba(255, 255, 255, 0.7); }
-        .empty-state { text-align: center; padding: 100px 20px; color: rgba(255, 255, 255, 0.5); }
-        .empty-state-icon { font-size: 80px; margin-bottom: 20px; opacity: 0.3; }
-        .leaflet-container { background: #0a0a0a !important; }
-        .leaflet-control-zoom a { background: rgba(79, 195, 247, 0.2) !important; color: #4fc3f7 !important; border-color: #4fc3f7 !important; }
-        .arrow-icon { background: transparent; border: none; }
-        .arrow-inner { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 30px solid #4fc3f7; filter: drop-shadow(0 0 10px rgba(79, 195, 247, 0.8)); transition: transform 0.1s linear; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0a0a0a; }
-        ::-webkit-scrollbar-thumb { background: #4fc3f7; border-radius: 4px; }
+
+        /* Salon Styles */
+        .salon-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .control-card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 15px; padding: 20px; border: 1px solid rgba(79, 195, 247, 0.3); transition: all 0.3s ease; }
+        .control-card:hover { border-color: #4fc3f7; box-shadow: 0 0 15px rgba(79, 195, 247, 0.2); }
+        .control-title { font-size: 20px; margin-bottom: 15px; color: #4fc3f7; }
         
-        /* Стили для QR */
-        .qr-section { margin-top: 30px; text-align: center; background: #fff; padding: 20px; border-radius: 15px; display: inline-block; }
-        #qrcode { margin: 0 auto; }
+        .toggle-container { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+        .toggle-switch { position: relative; width: 60px; height: 30px; background: rgba(255, 255, 255, 0.1); border-radius: 15px; cursor: pointer; transition: 0.3s; }
+        .toggle-switch.active { background: #4fc3f7; }
+        .toggle-slider { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; background: #fff; border-radius: 50%; transition: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        .toggle-switch.active .toggle-slider { left: 33px; }
+
+        .fuel-bar-bg { width: 100%; height: 20px; background: rgba(255, 255, 255, 0.1); border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .fuel-bar-fill { height: 100%; background: linear-gradient(90deg, #ff5252, #ffa726, #66bb6a); width: 100%; transition: width 0.5s; }
+        
+        .btn { padding: 12px 20px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; margin: 5px; font-weight: 600; }
+        .btn-primary { background: #4fc3f7; color: #000; }
+        .btn-secondary { background: rgba(79, 195, 247, 0.2); color: #4fc3f7; border: 1px solid #4fc3f7; }
+        .btn:hover { opacity: 0.9; transform: scale(1.02); }
+
+        .window-animation { position: relative; height: 100px; background: rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; margin-top: 10px; border: 2px solid #4fc3f7; }
+        .window-glass { position: absolute; top: 0; left: 0; right: 0; height: 100%; background: rgba(79, 195, 247, 0.2); transition: transform 1s; transform-origin: top; }
+        .window-glass.open { transform: scaleY(0); }
+
+        .mode-selector { display: flex; gap: 10px; margin-top: 15px; }
+        .mode-btn { flex: 1; padding: 15px; background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 10px; text-align: center; cursor: pointer; }
+        .mode-btn.active { background: rgba(79, 195, 247, 0.2); border-color: #4fc3f7; color: #4fc3f7; }
+
+        /* Navigator Styles - UPDATED LAYOUT */
+        .navigator-layout {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .nav-top-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            background: rgba(26, 26, 46, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: auto; /* Толкает кнопки вправо */
+        }
+
+        .speed-input {
+            width: 80px;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #4fc3f7;
+            border-radius: 8px;
+            color: #fff;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .nav-btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 10px 15px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+
+        .nav-btn-action { background: #4fc3f7; color: #000; }
+        .nav-btn-go { background: #66bb6a; color: #fff; }
+        .nav-btn-clear { background: rgba(255, 82, 82, 0.2); color: #ff5252; border: 1px solid #ff5252; }
+        .nav-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        #map { 
+            flex: 1; 
+            width: 100%; 
+            border-radius: 15px; 
+            border: 2px solid #4fc3f7; 
+            min-height: 400px;
+            z-index: 1;
+        }
+
+        .route-info {
+            margin-top: 15px;
+            background: rgba(79, 195, 247, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+        }
+
+        /* Taxi Styles */
+        .taxi-container { max-width: 800px; margin: 0 auto; text-align: center; }
+        .taxi-balance { font-size: 48px; color: #4fc3f7; margin: 20px 0; font-weight: bold; }
+        .qr-section { margin-top: 30px; background: #fff; padding: 20px; border-radius: 15px; display: inline-block; }
+        
+        .leaflet-container { background: #0a0a0a !important; }
+        .arrow-inner { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 30px solid #4fc3f7; filter: drop-shadow(0 0 10px #4fc3f7); }
     </style>
 </head>
 <body>
+    <!-- Login -->
     <div class="login-screen" id="loginScreen">
         <h1 class="login-title">Defender 4 меню</h1>
-        <input type="text" class="login-input" id="serialInput" placeholder="Введите серийный код вашего автомобиля серии Defender">
+        <input type="text" class="login-input" id="serialInput" placeholder="Серийный код (X3972314)">
         <button class="login-btn" id="continueBtn">Продолжить</button>
-        <div class="error-message" id="errorMessage">Мы не нашли такой серийный код в базе данных наших автомобилей.</div>
+        <div class="error-message" id="errorMessage">Код не найден в базе данных.</div>
     </div>
 
+    <!-- Main App -->
     <div class="main-container" id="mainContainer">
         <div class="header">
-            <h1 class="header-title">Defender 4 меню</h1>
-            <div class="serial-number">Серийный номер: X3972314</div>
+            <h1 class="header-title">Defender 4</h1>
+            <div class="serial-number">SN: X3972314</div>
         </div>
 
         <div class="tabs">
@@ -120,97 +179,91 @@
         </div>
 
         <div class="content">
+            <!-- SALON -->
             <div class="tab-content active" id="salon">
                 <div class="salon-grid">
                     <div class="control-card">
-                        <h2 class="control-title">❄️ Кондиционер</h2>
+                        <h3 class="control-title">❄️ Кондиционер</h3>
                         <div class="toggle-container">
-                            <span class="toggle-label">Включить кондиционер</span>
+                            <span>Включить</span>
                             <div class="toggle-switch" id="acToggle"><div class="toggle-slider"></div></div>
                         </div>
                     </div>
                     <div class="control-card">
-                        <h2 class="control-title">🚗 Двигатель</h2>
-                        <button class="btn btn-primary" id="startEngine">Завести двигатель</button>
-                        <div class="engine-status" id="engineStatus">Двигатель выключен</div>
+                        <h3 class="control-title">🚗 Двигатель</h3>
+                        <button class="btn btn-primary" style="width:100%" id="startEngine">Завести</button>
+                        <div id="engineStatus" style="margin-top:10px; text-align:center; color:#aaa;">Выключен</div>
                     </div>
                     <div class="control-card">
-                        <h2 class="control-title">⛽ Бензин</h2>
-                        <div class="fuel-container">
-                            <div class="fuel-bar-bg"><div class="fuel-bar-fill" id="fuelBar" style="width: 100%"></div></div>
-                            <div class="fuel-text" id="fuelText">100%</div>
-                        </div>
-                        <button class="btn btn-primary" id="refuelBtn">Заливание бензина</button>
-                        <div class="refuel-animation" id="refuelAnimation" style="display: none;"><div class="fuel-pump">⛽</div></div>
-                        <div class="refueling-text" id="refuelingText" style="display: none;">Заправка...</div>
+                        <h3 class="control-title">⛽ Бензин</h3>
+                        <div class="fuel-bar-bg"><div class="fuel-bar-fill" id="fuelBar"></div></div>
+                        <div id="fuelText" style="text-align:center">100%</div>
+                        <button class="btn btn-primary" style="width:100%; margin-top:10px;" id="refuelBtn">Заправить</button>
                     </div>
                     <div class="control-card">
-                        <h2 class="control-title">🪟 Окна</h2>
-                        <button class="btn btn-secondary" id="window1Btn">Открыть окно 1</button>
-                        <div class="window-animation" id="window1Anim"><div class="window-glass" id="window1Glass"></div><div class="window-frame"></div></div>
-                        <button class="btn btn-secondary" id="window2Btn" style="margin-top: 20px;">Открыть окно 2</button>
-                        <div class="window-animation" id="window2Anim"><div class="window-glass" id="window2Glass"></div><div class="window-frame"></div></div>
+                        <h3 class="control-title">🪟 Окна</h3>
+                        <button class="btn btn-secondary" id="window1Btn">Окно 1</button>
+                        <div class="window-animation"><div class="window-glass" id="window1Glass"></div></div>
+                        <button class="btn btn-secondary" id="window2Btn" style="margin-top:5px;">Окно 2</button>
+                        <div class="window-animation"><div class="window-glass" id="window2Glass"></div></div>
                     </div>
-                    <div class="control-card" style="grid-column: 1 / -1;">
-                        <h2 class="control-title">🏎️ Режим поездки</h2>
+                    <div class="control-card" style="grid-column: 1/-1;">
+                        <h3 class="control-title">🏎️ Режим</h3>
                         <div class="mode-selector">
-                            <div class="mode-btn active" id="modeNormal"><h3>Обычный</h3><p>Стандартная скорость</p></div>
-                            <div class="mode-btn" id="modeAccelerated"><h3>Ускоренный</h3><p>Скорость x2</p></div>
-                            <div class="mode-btn" id="modeSport"><h3>Спорт</h3><p>Скорость x5</p></div>
+                            <div class="mode-btn active" onclick="setMode(this, 1)">Обычный</div>
+                            <div class="mode-btn" onclick="setMode(this, 2)">Ускоренный (x2)</div>
+                            <div class="mode-btn" onclick="setMode(this, 5)">Спорт (x5)</div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- NAVIGATOR -->
             <div class="tab-content" id="navigator">
-                <div class="speed-selector">
-                    <label for="speedInput">Скорость движения (км/ч):</label>
-                    <input type="number" class="speed-input" id="speedInput" value="60" min="10" max="200">
-                </div>
-                <div id="map"></div>
-                <div class="nav-controls">
-                    <button class="btn btn-primary" id="setStartPoint">Указать точку старта</button>
-                    <button class="btn btn-primary" id="setEndPoint">Указать точку финиша</button>
-                    <button class="btn btn-primary" id="buildRoute">Поехали</button>
-                    <button class="btn btn-secondary" id="clearRoute">Очистить маршрут</button>
-                </div>
-                <div class="route-info" id="routeInfo" style="display: none;">
-                    <h3>Информация о маршруте</h3>
-                    <p id="routeDistance">Расстояние: --</p>
-                    <p id="routeTime">Время в пути: --</p>
-                    <p id="routeSpeed">Скорость: -- км/ч</p>
+                <div class="navigator-layout">
+                    <!-- Верхняя панель с кнопками и скоростью -->
+                    <div class="nav-top-controls">
+                        <div class="speed-control">
+                            <label>Скорость (км/ч):</label>
+                            <input type="number" class="speed-input" id="speedInput" value="60" min="10" max="200">
+                        </div>
+                        
+                        <div class="nav-btn-group">
+                            <button class="nav-btn nav-btn-action" id="setStartPoint">Старт</button>
+                            <button class="nav-btn nav-btn-action" id="setEndPoint">Финиш</button>
+                            <button class="nav-btn nav-btn-go" id="buildRoute">Поехали</button>
+                            <button class="nav-btn nav-btn-clear" id="clearRoute">Сброс</button>
+                        </div>
+                    </div>
+
+                    <!-- Карта -->
+                    <div id="map"></div>
+                    
+                    <div class="route-info" id="routeInfo">
+                        <p id="routeDistance">Расстояние: --</p>
+                        <p id="routeTime">Время: --</p>
+                    </div>
                 </div>
             </div>
 
+            <!-- TAXI -->
             <div class="tab-content" id="taxi">
                 <div class="taxi-container">
                     <div class="control-card">
-                        <h2 class="control-title">🚕 Режим такси</h2>
+                        <h3 class="control-title">🚕 Режим такси</h3>
                         <div class="toggle-container">
-                            <span class="toggle-label">Включить режим такси</span>
+                            <span>Активировать</span>
                             <div class="toggle-switch" id="taxiToggle"><div class="toggle-slider"></div></div>
                         </div>
                     </div>
-                    <div class="taxi-balance">
-                        <div class="balance-label">Баланс водителя</div>
-                        <div class="balance-amount" id="taxiBalance">0.00 ₽</div>
-                        <div style="color: rgba(255, 255, 255, 0.5); margin-top: 10px;">Максимум: 12 ₽/сек</div>
-                    </div>
+                    <div class="taxi-balance" id="taxiBalance">0.00 ₽</div>
                     
-                    <!-- Секция QR кода -->
-                    <div class="control-card" style="text-align: center;">
-                        <h2 class="control-title">💳 Оплата через Банк</h2>
-                        <p style="color: #aaa; margin-bottom: 15px;">Отсканируйте этот код в приложении Банка, чтобы вывести заработанные средства</p>
-                        <button class="btn btn-primary" onclick="generateQR()">Сгенерировать QR-код</button>
-                        <div id="qrContainer" style="margin-top: 20px; display: none; justify-content: center;">
+                    <div class="control-card">
+                        <h3 class="control-title">💳 QR Оплата</h3>
+                        <button class="btn btn-primary" onclick="generateQR()">Создать QR</button>
+                        <div id="qrContainer" style="margin-top:20px; display:none; justify-content:center;">
                             <div id="qrcode"></div>
                         </div>
-                    </div>
-
-                    <div class="empty-state" id="taxiEmptyState">
-                        <div class="empty-state-icon">🚗</div>
-                        <h2>Начните поездку</h2>
-                        <p>Включите режим такси и начните движение по маршруту, чтобы зарабатывать деньги</p>
                     </div>
                 </div>
             </div>
@@ -274,28 +327,28 @@
 
         document.getElementById('setStartPoint').addEventListener('click', function() {
             if (!map) return alert('Сначала перейдите на вкладку Навигатор');
-            alert('Кликните на карте, чтобы установить точку старта');
+            alert('Кликните на карте: точка СТАРТА');
             startPoint = null; endPoint = null; clearRouteFromMap();
         });
         document.getElementById('setEndPoint').addEventListener('click', function() {
             if (!map) return alert('Сначала перейдите на вкладку Навигатор');
             if (!startPoint) return alert('Сначала установите точку старта');
-            alert('Кликните на карте, чтобы установить точку финиша');
+            alert('Кликните на карте: точка ФИНИША');
         });
 
         function setStartPoint(latlng) {
             if (startPoint) map.removeLayer(startPoint.marker);
-            startPoint = { latlng: latlng, marker: L.marker(latlng, { icon: L.divIcon({ className: 'custom-marker', html: '<div style="background: #4fc3f7; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px rgba(79, 195, 247, 0.8);"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map) };
+            startPoint = { latlng: latlng, marker: L.marker(latlng, { icon: L.divIcon({ className: 'custom-marker', html: '<div style="background: #4fc3f7; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff;"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map) };
             map.setView(latlng, 15);
         }
         function setEndPoint(latlng) {
             if (endPoint) map.removeLayer(endPoint.marker);
-            endPoint = { latlng: latlng, marker: L.marker(latlng, { icon: L.divIcon({ className: 'custom-marker', html: '<div style="background: #ff5252; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px rgba(255, 82, 82, 0.8);"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map) };
+            endPoint = { latlng: latlng, marker: L.marker(latlng, { icon: L.divIcon({ className: 'custom-marker', html: '<div style="background: #ff5252; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff;"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(map) };
         }
 
         document.getElementById('buildRoute').addEventListener('click', async function() {
-            if (!startPoint || !endPoint) return alert('Установите обе точки: старта и финиша');
-            if (!engineOn) return alert('Сначала заведите двигатель в разделе Салон');
+            if (!startPoint || !endPoint) return alert('Установите точки Старта и Финиша');
+            if (!engineOn) return alert('Заведите двигатель в Салоне');
             const speed = parseInt(document.getElementById('speedInput').value) || 60;
             try {
                 const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${startPoint.latlng.lng},${startPoint.latlng.lat};${endPoint.latlng.lng},${endPoint.latlng.lat}?overview=full&geometries=geojson`);
@@ -304,18 +357,17 @@
                     const route = data.routes[0];
                     routeCoordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
                     if (routeLine) map.removeLayer(routeLine);
-                    routeLine = L.polyline(routeCoordinates, { color: '#4fc3f7', weight: 5, opacity: 0.8, smoothFactor: 1 }).addTo(map);
-                    const distance = (route.distance / 1000).toFixed(2);
-                    const time = Math.ceil(route.duration / 60);
-                    document.getElementById('routeDistance').textContent = `Расстояние: ${distance} км`;
-                    document.getElementById('routeTime').textContent = `Время в пути: ~${time} мин`;
-                    document.getElementById('routeSpeed').textContent = `Скорость: ${speed} км/ч`;
+                    routeLine = L.polyline(routeCoordinates, { color: '#4fc3f7', weight: 5, opacity: 0.8 }).addTo(map);
+                    
+                    document.getElementById('routeDistance').textContent = `Расстояние: ${(route.distance/1000).toFixed(1)} км`;
+                    document.getElementById('routeTime').textContent = `Время: ~${Math.ceil(route.duration/60)} мин`;
                     document.getElementById('routeInfo').style.display = 'block';
+                    
                     map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
                     createArrowMarker(routeCoordinates[0]);
                     startNavigation(speed);
-                } else { alert('Не удалось построить маршрут.'); }
-            } catch (error) { console.error(error); alert('Ошибка соединения.'); }
+                }
+            } catch (error) { alert('Ошибка маршрута'); }
         });
 
         function createArrowMarker(position) {
@@ -330,6 +382,7 @@
             isNavigating = true;
             const actualSpeed = baseSpeed * speedMultiplier;
             const delay = Math.max(50, 1000 / actualSpeed);
+            
             navigationInterval = setInterval(() => {
                 if (!engineOn || fuelLevel <= 0) {
                     stopNavigation();
@@ -341,13 +394,15 @@
                     const newPos = routeCoordinates[currentRouteIndex];
                     const prevPos = routeCoordinates[currentRouteIndex - 1];
                     const angle = calculateAngle(prevPos, newPos);
+                    
                     arrowMarker.setLatLng(newPos);
                     const arrowElement = arrowMarker.getElement().querySelector('.arrow-inner');
                     if (arrowElement) arrowElement.style.transform = `rotate(${angle}deg)`;
+                    
                     map.setBearing(angle);
                     map.panTo(newPos, { animate: true, duration: 0.05 });
                     consumeFuel();
-                } else { stopNavigation(); alert('Маршрут завершен!'); }
+                } else { stopNavigation(); alert('Приехали!'); }
             }, delay);
         }
 
@@ -377,19 +432,16 @@
         document.getElementById('startEngine').addEventListener('click', function() {
             if (engineOn) {
                 engineOn = false;
-                document.getElementById('engineStatus').textContent = 'Двигатель выключен';
-                document.getElementById('engineStatus').classList.remove('engine-starting');
-                this.textContent = 'Завести двигатель';
+                document.getElementById('engineStatus').textContent = 'Выключен';
+                this.textContent = 'Завести';
                 stopNavigation();
             } else {
                 this.disabled = true;
-                document.getElementById('engineStatus').textContent = 'Заведение двигателя...';
-                document.getElementById('engineStatus').classList.add('engine-starting');
+                document.getElementById('engineStatus').textContent = 'Запуск...';
                 setTimeout(() => {
                     engineOn = true;
-                    document.getElementById('engineStatus').textContent = 'Двигатель работает';
-                    document.getElementById('engineStatus').classList.remove('engine-starting');
-                    this.textContent = 'Выключить двигатель';
+                    document.getElementById('engineStatus').textContent = 'Работает';
+                    this.textContent = 'Глушить';
                     this.disabled = false;
                     startFuelConsumption();
                 }, 2000);
@@ -405,8 +457,8 @@
                     updateFuelDisplay();
                     if (fuelLevel <= 0) {
                         engineOn = false;
-                        document.getElementById('engineStatus').textContent = 'Двигатель выключен (нет бензина)';
-                        document.getElementById('startEngine').textContent = 'Завести двигатель';
+                        document.getElementById('engineStatus').textContent = 'Нет бензина';
+                        document.getElementById('startEngine').textContent = 'Завести';
                         stopNavigation();
                         clearInterval(fuelInterval);
                     }
@@ -416,111 +468,67 @@
 
         function consumeFuel() { if (fuelLevel > 0) { fuelLevel -= 0.02; if (fuelLevel < 0) fuelLevel = 0; updateFuelDisplay(); } }
         function updateFuelDisplay() {
-            const fuelBar = document.getElementById('fuelBar'); const fuelText = document.getElementById('fuelText');
-            fuelBar.style.width = fuelLevel + '%'; fuelText.textContent = Math.round(fuelLevel) + '%';
-            if (fuelLevel < 20) fuelBar.style.background = 'linear-gradient(90deg, #ff5252 0%, #ff5252 100%)';
-            else if (fuelLevel < 50) fuelBar.style.background = 'linear-gradient(90deg, #ff5252 0%, #ffa726 100%)';
-            else fuelBar.style.background = 'linear-gradient(90deg, #ff5252 0%, #ffa726 50%, #66bb6a 100%)';
+            document.getElementById('fuelBar').style.width = fuelLevel + '%';
+            document.getElementById('fuelText').textContent = Math.round(fuelLevel) + '%';
         }
 
         document.getElementById('refuelBtn').addEventListener('click', function() {
             if (refuelingInterval) return;
             this.disabled = true;
-            document.getElementById('refuelAnimation').style.display = 'block';
-            document.getElementById('refuelingText').style.display = 'block';
             refuelingInterval = setInterval(() => {
                 fuelLevel += 2;
                 if (fuelLevel >= 100) {
                     fuelLevel = 100; clearInterval(refuelingInterval); refuelingInterval = null;
-                    document.getElementById('refuelAnimation').style.display = 'none';
-                    document.getElementById('refuelingText').style.display = 'none';
                     this.disabled = false;
                 }
                 updateFuelDisplay();
-            }, 100);
+            }, 50);
         });
 
         let window1Open = false; let window2Open = false;
         document.getElementById('window1Btn').addEventListener('click', function() {
             window1Open = !window1Open;
-            const glass = document.getElementById('window1Glass');
-            if (window1Open) { glass.classList.add('open'); this.textContent = 'Закрыть окно 1'; }
-            else { glass.classList.remove('open'); this.textContent = 'Открыть окно 1'; }
+            document.getElementById('window1Glass').classList.toggle('open');
+            this.textContent = window1Open ? 'Закрыть 1' : 'Открыть 1';
         });
         document.getElementById('window2Btn').addEventListener('click', function() {
             window2Open = !window2Open;
-            const glass = document.getElementById('window2Glass');
-            if (window2Open) { glass.classList.add('open'); this.textContent = 'Закрыть окно 2'; }
-            else { glass.classList.remove('open'); this.textContent = 'Открыть окно 2'; }
+            document.getElementById('window2Glass').classList.toggle('open');
+            this.textContent = window2Open ? 'Закрыть 2' : 'Открыть 2';
         });
 
-        document.getElementById('modeNormal').addEventListener('click', function() { setActiveMode(this, 'normal', 1); });
-        document.getElementById('modeAccelerated').addEventListener('click', function() { setActiveMode(this, 'accelerated', 2); });
-        document.getElementById('modeSport').addEventListener('click', function() { setActiveMode(this, 'sport', 5); });
-        function setActiveMode(element, mode, multiplier) {
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            element.classList.add('active'); currentMode = mode; speedMultiplier = multiplier;
+        function setMode(el, mult) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            speedMultiplier = mult;
         }
 
-        // --- ТАКСИ ЛОГИКА ---
+        // Taxi Logic
         document.getElementById('taxiToggle').addEventListener('click', function() {
             taxiMode = !taxiMode;
             this.classList.toggle('active');
             updateTaxiStatus();
-            if (taxiMode) {
-                document.getElementById('taxiEmptyState').style.display = 'none';
-                startTaxiEarning();
-            } else {
-                document.getElementById('taxiEmptyState').style.display = 'block';
-                stopTaxiEarning();
-            }
         });
 
-        function startTaxiEarning() {
-            if (taxiEarningInterval) return;
-            taxiEarningInterval = setInterval(() => {
-                if (taxiMode && isNavigating && engineOn) {
-                    const earnings = Math.random() * 12;
-                    taxiBalance += earnings;
-                    updateTaxiBalance();
-                }
-            }, 1000);
-        }
-        function stopTaxiEarning() {
-            if (taxiEarningInterval) { clearInterval(taxiEarningInterval); taxiEarningInterval = null; }
-        }
-        function updateTaxiBalance() { document.getElementById('taxiBalance').textContent = taxiBalance.toFixed(2) + ' ₽'; }
-
-        // --- QR КОД ---
         function generateQR() {
             const container = document.getElementById('qrContainer');
             const qrDiv = document.getElementById('qrcode');
-            
-            if (taxiBalance < 1) {
-                alert('Минимальная сумма для вывода: 1 ₽');
-                return;
-            }
-
+            if (taxiBalance < 1) return alert('Минимум 1 ₽');
             container.style.display = 'flex';
-            qrDiv.innerHTML = ''; // Очистка старого кода
-            
-            const paymentData = {
-                type: 'taxi_payment',
-                amount: Math.floor(taxiBalance),
-                timestamp: Date.now()
-            };
-
+            qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
-                text: JSON.stringify(paymentData),
-                width: 200,
-                height: 200,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                text: JSON.stringify({ type: 'taxi_payment', amount: Math.floor(taxiBalance) }),
+                width: 150, height: 150
             });
         }
 
-        document.getElementById('modeNormal').classList.add('active');
+        // Earnings
+        setInterval(() => {
+            if (taxiMode && isNavigating && engineOn) {
+                taxiBalance += Math.random() * 12;
+                document.getElementById('taxiBalance').textContent = taxiBalance.toFixed(2) + ' ₽';
+            }
+        }, 1000);
     </script>
 </body>
 </html>
